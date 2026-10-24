@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { notifyAppointment } from "@/lib/notify";
 import { getServerClient } from "@/lib/supabase";
 import type { PublicAppointment } from "@/lib/types";
 import { AppointmentView } from "./AppointmentView";
@@ -19,6 +21,10 @@ export default async function AppointmentPage({
   const { data } = await getServerClient().rpc("get_appointment_by_token", { p_token: token });
   const appt = (data as PublicAppointment[] | null)?.[0];
   if (!appt) notFound();
+
+  // Emails go out once per event; the database ignores repeat calls.
+  if (appt.status === "confirmed") after(() => notifyAppointment(token, "booked"));
+  if (appt.status === "cancelled") after(() => notifyAppointment(token, "cancelled"));
 
   return (
     <AppointmentView

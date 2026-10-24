@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { getServiceClient } from "@/lib/supabase";
+import { notifyAppointment } from "@/lib/notify";
 
 export async function POST(req: Request) {
   const stripe = getStripe();
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
         .update({ payment_status: "paid", status: "confirmed", stripe_session_id: session.id })
         .eq("id", id)
         .in("status", ["pending_payment", "confirmed"]);
+      if (session.metadata?.manage_token) await notifyAppointment(session.metadata.manage_token, "booked");
     }
   }
 

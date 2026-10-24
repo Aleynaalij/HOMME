@@ -147,8 +147,15 @@ function Appointments() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function setStatus(id: string, status: AppointmentStatus) {
-    await sb().from("appointments").update({ status }).eq("id", id);
+  async function setStatus(a: Appointment, status: AppointmentStatus) {
+    await sb().from("appointments").update({ status }).eq("id", a.id);
+    if (status === "cancelled") {
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: a.manage_token, event: "cancelled" }),
+      }).catch(() => {});
+    }
     load();
   }
   async function markPaid(id: string) {
@@ -212,12 +219,12 @@ function Appointments() {
                   {a.notes && <p className="mt-2 rounded-lg bg-surface-2 px-3 py-2 text-sm text-muted">“{a.notes}”</p>}
                   {a.status !== "cancelled" && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {a.status !== "completed" && <button className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => setStatus(a.id, "completed")}>Mark completed</button>}
+                      {a.status !== "completed" && <button className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => setStatus(a, "completed")}>Mark completed</button>}
                       {a.payment_status !== "paid" && <button className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => markPaid(a.id)}>Mark paid</button>}
-                      {a.status !== "no_show" && a.status !== "completed" && <button className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => setStatus(a.id, "no_show")}>No-show</button>}
+                      {a.status !== "no_show" && a.status !== "completed" && <button className="btn-ghost !px-3 !py-1.5 !text-xs" onClick={() => setStatus(a, "no_show")}>No-show</button>}
                       {a.status !== "completed" && (
                         <button className="btn-ghost !px-3 !py-1.5 !text-xs !text-danger"
-                          onClick={() => confirm(`Cancel ${a.customer_name}'s appointment?`) && setStatus(a.id, "cancelled")}>Cancel</button>
+                          onClick={() => confirm(`Cancel ${a.customer_name}'s appointment? They'll get a cancellation email.`) && setStatus(a, "cancelled")}>Cancel</button>
                       )}
                       {a.status === "completed" && (
                         <button className="btn-ghost !px-3 !py-1.5 !text-xs"
@@ -380,6 +387,7 @@ function Hours() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
+      <AlertSettings />
       <section className="card p-5">
         <h2 className="font-display text-2xl font-bold">Weekly hours</h2>
         <div className="mt-5 space-y-3">
@@ -434,6 +442,34 @@ function Hours() {
         </ul>
       </section>
     </div>
+  );
+}
+
+function AlertSettings() {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    sb().from("settings").select("notify_email").eq("id", 1).single()
+      .then(({ data }) => setEmail((data?.notify_email as string | null) ?? ""));
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const { error } = await sb().from("settings").update({ notify_email: email.trim() || null }).eq("id", 1);
+    setMsg(error ? error.message : email.trim() ? "Saved — new bookings and cancellations will be emailed here." : "Booking alerts turned off.");
+  }
+
+  return (
+    <form onSubmit={save} className="card p-5 lg:col-span-2">
+      <h2 className="font-display text-2xl font-bold">Booking alerts</h2>
+      <p className="mt-1 text-sm text-muted">Get an email every time someone books or cancels. Leave blank to turn off.</p>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <input className="input" type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <button className="btn-primary shrink-0">Save</button>
+      </div>
+      {msg && <p className="mt-3 text-sm text-gold-soft">{msg}</p>}
+    </form>
   );
 }
 

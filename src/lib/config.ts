@@ -14,5 +14,8 @@ export const brand = {
   timezone: "America/New_York",
 };
 
+/** Public base URL for links in emails (no trailing slash). */
+export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://homme-5es8.vercel.app").trim().replace(/\/+$/, "");
+
 export const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(brand.mapsQuery)}`;
 export const mapsEmbed = `https://www.google.com/maps?q=${encodeURIComponent(brand.mapsQuery)}&output=embed`;
