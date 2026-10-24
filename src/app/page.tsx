@@ -7,6 +7,7 @@ import { Logo } from "@/components/Logo";
 import { Stars } from "@/components/Stars";
 import { HoursCard } from "@/components/HoursCard";
 import { ReviewsList } from "@/components/ReviewsList";
+import { LiveBanner, LiveNavLink, LiveSection } from "@/components/live";
 import { ChevronRightIcon, ClockIcon, InstagramIcon, PinIcon, TikTokIcon } from "@/components/icons";
 
 export const revalidate = 60;
@@ -41,9 +42,11 @@ export default async function Home() {
             <a href="#services" className="hover:text-fg">Services</a>
             <a href="#reviews" className="hover:text-fg">Reviews</a>
             <a href="#visit" className="hover:text-fg">Visit</a>
+            <LiveNavLink />
           </nav>
           <Link href="/book" className="btn-primary !px-5 !py-2.5 !text-[0.7rem]">Book</Link>
         </div>
+        <LiveBanner />
       </header>
 
       {/* Hero */}
@@ -71,6 +74,8 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <LiveSection />
 
       {/* About */}
       <section className="border-y border-line bg-surface/40">

@@ -8,9 +8,11 @@ import { WEEKDAYS, duration, formatDateShort, formatTime, money, shopNow } from 
 import { brand } from "@/lib/config";
 import { Logo } from "@/components/Logo";
 import { Stars } from "@/components/Stars";
+import { LiveDot } from "@/components/live";
+import { PLATFORM_LABEL, type LiveStatus, type Platform } from "@/lib/live-shared";
 
 const sb = () => getBrowserClient();
-type Tab = "appointments" | "services" | "hours" | "reviews";
+type Tab = "appointments" | "services" | "hours" | "live" | "reviews";
 
 export function AdminApp() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -102,7 +104,7 @@ function Dashboard({ email }: { email: string }) {
           </div>
         </div>
         <nav className="no-scrollbar mx-auto flex max-w-5xl gap-1 overflow-x-auto px-5 pb-3">
-          {(["appointments", "services", "hours", "reviews"] as Tab[]).map((t) => (
+          {(["appointments", "services", "hours", "live", "reviews"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === t ? "bg-fg text-black" : "text-muted hover:text-fg"}`}>
               {t}
@@ -114,6 +116,7 @@ function Dashboard({ email }: { email: string }) {
         {tab === "appointments" && <Appointments />}
         {tab === "services" && <Services />}
         {tab === "hours" && <Hours />}
+        {tab === "live" && <Live />}
         {tab === "reviews" && <Reviews />}
       </main>
     </div>
@@ -482,6 +485,110 @@ function zonedToUtc(ymd: string, hm: string, tz: string) {
   const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
   const asTz = Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute"));
   return new Date(guess.getTime() - (asTz - guess.getTime())).toISOString();
+}
+
+/* ---------------- Live stream ---------------- */
+
+const CHANNEL_HELP: Record<Platform, string> = {
+  kick: "Your Kick username — the part after kick.com/",
+  twitch: "Your Twitch username — the part after twitch.tv/",
+  youtube: "Your YouTube channel ID (starts with UC…). Find it in YouTube Studio → Settings → Channel → Advanced.",
+};
+
+function Live() {
+  const [platform, setPlatform] = useState<Platform>("kick");
+  const [channel, setChannel] = useState("");
+  const [manual, setManual] = useState(false);
+  const [status, setStatus] = useState<LiveStatus | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const refreshStatus = useCallback(async () => {
+    const res = await fetch("/api/live?fresh=1", { cache: "no-store" });
+    if (res.ok) setStatus(await res.json());
+  }, []);
+
+  useEffect(() => {
+    sb().from("settings").select("stream_platform, stream_channel, stream_manual_live").eq("id", 1).single()
+      .then(({ data }) => {
+        if (!data) return;
+        setPlatform(data.stream_platform as Platform);
+        setChannel((data.stream_channel as string | null) ?? "");
+        setManual(Boolean(data.stream_manual_live));
+      });
+    refreshStatus();
+  }, [refreshStatus]);
+
+  async function save(patch: { stream_platform?: Platform; stream_channel?: string | null; stream_manual_live?: boolean }) {
+    const { error } = await sb().from("settings").update(patch).eq("id", 1);
+    setMsg(error ? error.message : "Saved");
+    await refreshStatus();
+  }
+
+  const clean = (v: string) =>
+    v.trim().replace(/^https?:\/\/(www\.)?(kick\.com|twitch\.tv|youtube\.com)\/(channel\/)?/i, "").replace(/^@/, "").replace(/\/.*$/, "");
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <section className="card p-5">
+        <h2 className="font-display text-2xl font-bold">Live stream</h2>
+        <p className="mt-1 text-sm text-muted">When you go live, your stream shows on the website automatically with a red “LIVE NOW” banner.</p>
+        <form
+          className="mt-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const c = clean(channel);
+            setChannel(c);
+            save({ stream_platform: platform, stream_channel: c || null });
+          }}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {(["kick", "twitch", "youtube"] as Platform[]).map((p) => (
+              <button key={p} type="button" onClick={() => setPlatform(p)}
+                className={`rounded-xl border py-2.5 text-sm font-semibold ${platform === p ? "border-gold bg-gold/10" : "border-line hover:border-muted"}`}>
+                {PLATFORM_LABEL[p]}
+              </button>
+            ))}
+          </div>
+          <label className="block text-xs text-muted">{CHANNEL_HELP[platform]}
+            <input className="input mt-1" placeholder={platform === "youtube" ? "UCxxxxxxxxxxxx" : "hommellc"} value={channel} onChange={(e) => setChannel(e.target.value)} />
+          </label>
+          <button className="btn-primary w-full">Save channel</button>
+        </form>
+        {msg && <p className="mt-3 text-sm text-gold-soft">{msg}</p>}
+      </section>
+
+      <section className="card p-5">
+        <h2 className="font-display text-2xl font-bold">Status</h2>
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-surface-2 px-4 py-3">
+          {status?.live ? <LiveDot /> : <span className="h-2.5 w-2.5 rounded-full bg-muted/40" />}
+          <span className="font-semibold">{status === null ? "Checking…" : status.live ? "LIVE on the website" : "Offline"}</span>
+          <button className="ml-auto text-sm text-muted hover:text-fg" onClick={refreshStatus}>Refresh</button>
+        </div>
+        <p className="mt-3 text-sm text-muted">
+          {!status?.channel
+            ? "Add your channel to get started."
+            : status.source === "api"
+              ? `Auto-detect is working — the site checks ${PLATFORM_LABEL[status.platform]} every minute.`
+              : status.source === "manual"
+                ? "Showing because the “I'm live” switch is on."
+                : `Auto-detect isn't available for this channel yet — use the switch below when you go live.`}
+        </p>
+
+        <label className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-4">
+          <span>
+            <span className="block font-semibold">I&apos;m live</span>
+            <span className="block text-sm text-muted">Force the live player on. Turn it off when you finish.</span>
+          </span>
+          <input type="checkbox" className="h-6 w-6 accent-red-500" checked={manual}
+            onChange={(e) => { setManual(e.target.checked); save({ stream_manual_live: e.target.checked }); }} />
+        </label>
+
+        {status?.channel && (
+          <a href="/live" target="_blank" className="btn-ghost mt-4 w-full">Preview the live page</a>
+        )}
+      </section>
+    </div>
+  );
 }
 
 /* ---------------- Reviews ---------------- */
