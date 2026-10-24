@@ -68,7 +68,7 @@ function Login() {
         ? await sb().auth.signInWithPassword({ email, password })
         : await sb().auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}/admin` } });
     setBusy(false);
-    if (error) setMsg(error.message);
+    if (error) setMsg(error.message === "Failed to fetch" ? "Couldn't reach the server — check your connection and try again." : error.message);
     else if (mode === "up") setMsg("Check your email to confirm your account, then sign in.");
   }
 

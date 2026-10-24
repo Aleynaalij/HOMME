@@ -1,7 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Public values (safe to ship to the browser). Valid env vars override them; the fallbacks keep the
+// site working if the Vercel env vars are missing or mistyped.
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+const url = envUrl && /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(envUrl) ? envUrl : "https://gkhdmpbimtxdijmtucsf.supabase.co";
+const anonKey = envKey && /^(sb_publishable_|eyJ)/.test(envKey) ? envKey : "sb_publishable_oIwrNexTJ0-QkqeK6Bk84w_JsxaOoVS";
 
 let browserClient: SupabaseClient | null = null;
 
