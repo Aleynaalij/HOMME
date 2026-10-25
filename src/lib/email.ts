@@ -136,12 +136,41 @@ ${details(a)}${button(manage(a), "View or cancel")}${directions}`,
 ${details(a)}${button(`${siteUrl}/book`, "Book a new time")}`,
     ),
   }),
-  ownerCancelled: (a: ApptInfo) => ({
+  ownerCancelled: (a: ApptInfo, waitlistEmailed = 0) => ({
     subject: `Cancelled: ${a.customer_name} — ${formatDateLong(a.starts_at)}, ${formatTime(a.starts_at)}`,
     html: layout(
       "Booking cancelled",
-      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">This time slot is open again.</p>
+      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">This time slot is open again.${
+        waitlistEmailed ? ` ${waitlistEmailed} ${waitlistEmailed === 1 ? "person" : "people"} on your waitlist just got an email about it.` : ""
+      }</p>
 ${details(a, [["Client", a.customer_name], ["Phone", a.customer_phone ?? ""]])}${button(`${siteUrl}/admin`, "Open dashboard")}`,
+    ),
+  }),
+  reviewRequest: (a: ApptInfo) => ({
+    subject: `How was your cut, ${a.customer_name.split(/\s+/)[0]}?`,
+    html: layout(
+      "Thanks for coming in!",
+      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${firstName(a)}, thanks for sitting in ${brand.barber}'s chair today. Got 10 seconds? A quick review helps new clients find HOMME.</p>
+<p style="font-size:32px;letter-spacing:6px;margin:18px 0;color:#c9a96a">★★★★★</p>
+${button(manage(a), "Leave a review")}`,
+    ),
+  }),
+  waitlistOpening: (name: string, opening: string) => ({
+    subject: `A spot just opened — ${formatDateLong(opening)}, ${formatTime(opening)}`,
+    html: layout(
+      "A spot just opened up",
+      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${esc(name.split(/\s+/)[0] ?? name)}, good news: <b>${esc(formatDateLong(opening))} at ${esc(formatTime(opening))}</b> just opened up with ${brand.barber}.</p>
+<p style="font-size:14px;line-height:1.6;color:#9a9690;margin:0 0 20px">First come, first served — grab it before someone else does.</p>
+${button(`${siteUrl}/book`, "Book it now")}`,
+    ),
+  }),
+  rebookReminder: (name: string, unsubscribeUrl: string) => ({
+    subject: "Time for a fresh cut? 💈",
+    html: layout(
+      "Time for a fresh cut?",
+      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${esc(name.split(/\s+/)[0] ?? name)}, it's been a few weeks since your last visit. Keep it looking sharp — ${brand.barber}'s chair is ready when you are.</p>
+<div style="margin-top:18px">${button(`${siteUrl}/book`, "Book your next cut")}</div>
+<p style="font-size:12px;color:#9a9690;margin:28px 0 0"><a href="${unsubscribeUrl}" style="color:#9a9690">Stop these reminders</a></p>`,
     ),
   }),
   clientReminder: (a: ApptInfo) => ({

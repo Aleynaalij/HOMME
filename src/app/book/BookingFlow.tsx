@@ -17,11 +17,13 @@ export function BookingFlow({
   hours,
   initialServiceId,
   cardEnabled,
+  waitlistEnabled,
 }: {
   services: Service[];
   hours: BusinessHours[];
   initialServiceId?: string;
   cardEnabled: boolean;
+  waitlistEnabled: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("services");
@@ -211,7 +213,12 @@ export function BookingFlow({
               ))}
             </div>
             {slots?.length === 0 && (
-              <div className="card mt-2 p-6 text-center text-muted">Fully booked this day — try another date.</div>
+              <div className="card mt-2 p-6 text-center text-muted">
+                Fully booked this day{waitlistEnabled ? " — join the waitlist and you'll hear first if a spot opens." : " — try another date."}
+              </div>
+            )}
+            {waitlistEnabled && slots !== null && (
+              <JoinWaitlist date={date} serviceNames={chosen.map((s) => s.name).join(" + ")} prominent={slots.length === 0} />
             )}
           </section>
         )}
@@ -324,5 +331,63 @@ function PayOption({ active, disabled, onClick, title, sub }: { active: boolean;
       <span className="block font-semibold">{title}</span>
       <span className="block text-sm text-muted">{sub}</span>
     </button>
+  );
+}
+
+function JoinWaitlist({ date, serviceNames, prominent }: { date: string; serviceNames: string; prominent: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ name: "", phone: "", email: "", anyDay: false });
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setState("idle");
+    setOpen(false);
+  }, [date]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setState("busy");
+    setError(null);
+    const { error } = await getBrowserClient().rpc("join_waitlist", {
+      p_name: f.name, p_phone: f.phone, p_email: f.email, p_date: f.anyDay ? null : date, p_service_names: serviceNames,
+    });
+    if (error) {
+      setState("idle");
+      setError(error.message);
+    } else setState("done");
+  }
+
+  if (state === "done") {
+    return (
+      <div className="card mt-4 p-5 text-center">
+        <p className="font-semibold">You&apos;re on the waitlist ✓</p>
+        <p className="mt-1 text-sm text-muted">If a spot opens{f.anyDay ? "" : ` on ${formatDateLong(`${date}T12:00:00Z`)}`}, you&apos;ll be the first to know.</p>
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={`${prominent ? "btn-primary mt-4 w-full" : "mt-5 w-full text-center text-sm text-muted underline-offset-4 hover:text-fg hover:underline"}`}>
+        {prominent ? "Join the waitlist" : "Can’t find a time that works? Join the waitlist"}
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="card mt-4 space-y-3 p-5">
+      <p className="font-semibold">Join the waitlist</p>
+      <p className="text-sm text-muted">We&apos;ll email you the moment a spot opens. First to book gets it.</p>
+      <input className="input" required placeholder="Full name" maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+      <input className="input" type="email" placeholder="Email (for instant alerts)" maxLength={200} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+      <input className="input" type="tel" placeholder="Phone" maxLength={40} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+      <label className="flex items-center gap-2 text-sm text-muted">
+        <input type="checkbox" className="h-4 w-4 accent-[var(--gold)]" checked={f.anyDay} onChange={(e) => setF({ ...f, anyDay: e.target.checked })} />
+        Any day works for me
+      </label>
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <button className="btn-primary w-full" disabled={state === "busy"}>{state === "busy" ? "Joining…" : "Join waitlist"}</button>
+    </form>
   );
 }

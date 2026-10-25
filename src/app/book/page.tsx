@@ -9,9 +9,10 @@ export const revalidate = 60;
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
   const { service } = await searchParams;
   const sb = getServerClient();
-  const [services, hours] = await Promise.all([
+  const [services, hours, settings] = await Promise.all([
     sb.from("services").select("*").eq("active", true).order("sort_order"),
     sb.from("business_hours").select("*").order("weekday"),
+    sb.from("settings").select("waitlist_enabled").eq("id", 1).single(),
   ]);
   return (
     <BookingFlow
@@ -19,6 +20,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       hours={(hours.data ?? []) as BusinessHours[]}
       initialServiceId={service}
       cardEnabled={Boolean(process.env.STRIPE_SECRET_KEY)}
+      waitlistEnabled={settings.data?.waitlist_enabled !== false}
     />
   );
 }

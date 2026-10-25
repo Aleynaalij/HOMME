@@ -134,6 +134,8 @@ export function Marketing() {
         <canvas ref={flyerRef} className="mt-4 w-full rounded-2xl border border-line" />
       </section>
 
+      <Automations />
+
       <section className="card p-5 lg:col-span-2">
         <h2 className="font-display text-2xl font-bold">Website announcement</h2>
         <p className="mt-1 text-sm text-muted">A gold bar across the top of your website. Great for holiday hours, specials or “new openings Saturday.”</p>
@@ -145,5 +147,65 @@ export function Marketing() {
         {msg && <div className="mt-3"><Notice msg={msg} /></div>}
       </section>
     </div>
+  );
+}
+
+type AutoSettings = { review_requests: boolean; rebook_reminder_days: number; waitlist_enabled: boolean };
+
+function Automations() {
+  const [s, setS] = useState<AutoSettings | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    sb().from("settings").select("review_requests, rebook_reminder_days, waitlist_enabled").eq("id", 1).single()
+      .then(({ data }) => data && setS(data as AutoSettings));
+  }, []);
+
+  async function save(patch: Partial<AutoSettings>) {
+    if (!s) return;
+    setS({ ...s, ...patch });
+    const { error } = await sb().from("settings").update(patch).eq("id", 1);
+    setMsg(error ? error.message : "Saved");
+  }
+
+  if (!s) return null;
+  return (
+    <section className="card p-5 lg:col-span-2">
+      <h2 className="font-display text-2xl font-bold">Automations</h2>
+      <p className="mt-1 text-sm text-muted">Set it and forget it — these run on their own (emails need Resend set up).</p>
+      <div className="mt-4 divide-y divide-line">
+        <Toggle title="Review requests" sub="When you mark a cut completed, the client gets a “How was your cut?” email."
+          checked={s.review_requests} onChange={(v) => save({ review_requests: v })} />
+        <Toggle title="Waitlist" sub="When a day is full, clients can join the waitlist. If someone cancels, everyone waiting for that day gets an email instantly."
+          checked={s.waitlist_enabled} onChange={(v) => save({ waitlist_enabled: v })} />
+        <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <span>
+            <span className="block font-semibold">Rebooking reminders</span>
+            <span className="block text-sm text-muted">“Time for a fresh cut?” email if a client hasn’t rebooked.</span>
+          </span>
+          <select className="input !w-auto" value={s.rebook_reminder_days} onChange={(e) => save({ rebook_reminder_days: Number(e.target.value) })}>
+            <option value={0}>Off</option>
+            {[14, 21, 28, 35, 42, 56].map((d) => <option key={d} value={d}>{d / 7} weeks after a visit</option>)}
+          </select>
+        </div>
+        <div className="py-4 text-sm text-muted">
+          <span className="block font-semibold text-fg">Appointment reminders</span>
+          Always on — clients get a reminder email the day before.
+        </div>
+      </div>
+      {msg && <Notice msg={msg} />}
+    </section>
+  );
+}
+
+function Toggle({ title, sub, checked, onChange }: { title: string; sub: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-4 py-4">
+      <span>
+        <span className="block font-semibold">{title}</span>
+        <span className="block text-sm text-muted">{sub}</span>
+      </span>
+      <input type="checkbox" className="h-6 w-6 shrink-0 accent-[var(--gold)]" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
   );
 }

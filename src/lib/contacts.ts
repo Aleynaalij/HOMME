@@ -134,7 +134,7 @@ function csvRows(text: string): string[][] {
 /** Format +13015550101 as (301) 555-0101 for display. */
 export function prettyPhone(p: string | null) {
   if (!p) return "";
-  const m = p.match(/^\+1(\d{3})(\d{3})(\d{4})$/);
+  const m = p.replace(/[^\d+]/g, "").match(/^(?:\+?1)?(\d{3})(\d{3})(\d{4})$/);
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p;
 }
 

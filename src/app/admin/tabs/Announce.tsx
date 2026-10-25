@@ -4,15 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { prettyPhone, smsLink } from "@/lib/contacts";
 import { siteUrl } from "@/lib/config";
 import { formatDateShort } from "@/lib/format";
-import { matchesFilter } from "./Clients";
+import { matchesFilter, type Filter } from "./Clients";
 import { Notice, sb, type Client } from "../shared";
 
-type Audience = "all" | "regulars" | "lapsed" | "new" | "never";
+type Audience = Filter;
 type Broadcast = { id: string; channel: string; subject: string | null; message: string; audience: string | null; recipient_count: number; created_at: string };
 
 const AUDIENCES: { id: Audience; label: string }[] = [
   { id: "all", label: "Everyone" },
   { id: "regulars", label: "Regulars" },
+  { id: "due", label: "Due for a cut" },
   { id: "lapsed", label: "Haven't been in 60+ days" },
   { id: "new", label: "New this month" },
   { id: "never", label: "Never booked" },

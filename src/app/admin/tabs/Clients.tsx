@@ -6,11 +6,12 @@ import { formatDateShort, formatTime, money } from "@/lib/format";
 import type { Appointment } from "@/lib/types";
 import { Modal, Notice, sb, type Client } from "../shared";
 
-type Filter = "all" | "regulars" | "lapsed" | "new" | "never";
+export type Filter = "all" | "regulars" | "due" | "lapsed" | "new" | "never";
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "regulars", label: "Regulars (3+ visits)" },
+  { id: "due", label: "Due for a cut (4–8 wks)" },
   { id: "lapsed", label: "Haven't been in 60+ days" },
   { id: "new", label: "New this month" },
   { id: "never", label: "Never booked" },
@@ -19,6 +20,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 export function matchesFilter(c: Client, f: Filter) {
   const days = (iso: string | null) => (iso ? (Date.now() - new Date(iso).getTime()) / 86_400_000 : Infinity);
   if (f === "regulars") return c.visits >= 3;
+  if (f === "due") return c.visits > 0 && days(c.last_visit) >= 28 && days(c.last_visit) <= 60 && !c.next_visit;
   if (f === "lapsed") return c.visits > 0 && days(c.last_visit) > 60 && !c.next_visit;
   if (f === "new") return days(c.created_at) <= 30;
   if (f === "never") return c.visits === 0 && !c.next_visit;

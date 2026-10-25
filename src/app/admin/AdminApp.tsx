@@ -17,6 +17,8 @@ import { Announce } from "./tabs/Announce";
 import { Marketing } from "./tabs/Marketing";
 import { Gallery } from "./tabs/Gallery";
 import { BookForClient } from "./tabs/BookForClient";
+import { Waitlist } from "./tabs/Waitlist";
+import { prettyPhone, smsLink } from "@/lib/contacts";
 
 type Tab = "appointments" | "clients" | "announce" | "marketing" | "gallery" | "services" | "hours" | "live" | "reviews";
 const TABS: { id: Tab; label: string }[] = [
@@ -220,11 +222,12 @@ function Appointments() {
 
   async function setStatus(a: Appointment, status: AppointmentStatus) {
     await sb().from("appointments").update({ status }).eq("id", a.id);
-    if (status === "cancelled") {
+    // Cancelled → client/owner/waitlist emails; completed → review request email.
+    if (status === "cancelled" || status === "completed") {
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: a.manage_token, event: "cancelled" }),
+        body: JSON.stringify({ token: a.manage_token, event: status }),
       }).catch(() => {});
     }
     load();
@@ -258,14 +261,15 @@ function Appointments() {
           <Stat label="Booked ahead" value={money(expected)} />
         </div>
       )}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         {(["upcoming", "past"] as const).map((v) => (
           <button key={v} onClick={() => setView(v)} className={`btn-ghost !py-1.5 capitalize ${view === v ? "!border-fg" : ""}`}>{v}</button>
         ))}
         <button onClick={load} className="btn-ghost ml-auto !py-1.5">Refresh</button>
-        <button onClick={() => setBooking(true)} className="btn-primary !px-4 !py-1.5 !text-[0.7rem]">+ Book</button>
+        <button onClick={() => setBooking(true)} className="btn-primary whitespace-nowrap !px-4 !py-1.5 !text-[0.7rem]">+ Book</button>
       </div>
       {booking && <BookForClient onClose={() => setBooking(false)} onBooked={load} />}
+      {view === "upcoming" && <Waitlist />}
       {rows === null && <p className="text-muted">Loading…</p>}
       {rows?.length === 0 && <div className="card p-8 text-center text-muted">No {view} appointments.</div>}
       <div className="space-y-8">
@@ -280,7 +284,7 @@ function Appointments() {
                       <p className="text-lg font-semibold">{formatTime(a.starts_at)} <span className="text-sm font-normal text-muted">– {formatTime(a.ends_at)}</span></p>
                       <p className="mt-0.5 font-semibold">{a.customer_name}</p>
                       <p className="text-sm text-muted">
-                        <a href={`tel:${a.customer_phone}`} className="hover:text-fg">{a.customer_phone}</a> · <a href={`mailto:${a.customer_email}`} className="hover:text-fg">{a.customer_email}</a>
+                        <a href={`tel:${a.customer_phone}`} className="hover:text-fg">{prettyPhone(a.customer_phone)}</a> · <a href={`mailto:${a.customer_email}`} className="hover:text-fg">{a.customer_email}</a>
                       </p>
                     </div>
                     <div className="text-right">
@@ -299,6 +303,12 @@ function Appointments() {
                       {a.status !== "completed" && (
                         <button className="btn-ghost !px-3 !py-1.5 !text-xs !text-danger"
                           onClick={() => confirm(`Cancel ${a.customer_name}'s appointment? They'll get a cancellation email.`) && setStatus(a, "cancelled")}>Cancel</button>
+                      )}
+                      {a.status === "completed" && a.customer_phone && (
+                        <a className="btn-ghost !px-3 !py-1.5 !text-xs"
+                          href={smsLink(a.customer_phone, `Thanks for coming in, ${a.customer_name.split(/\s+/)[0]}! If you have 10 seconds, I'd love a quick review: ${location.origin}/appointment/${a.manage_token}`)}>
+                          Text review link
+                        </a>
                       )}
                       {a.status === "completed" && (
                         <button className="btn-ghost !px-3 !py-1.5 !text-xs"
@@ -686,8 +696,8 @@ function Reviews() {
   return (
     <div>
       <p className="mb-4 text-sm text-muted">
-        {pending ? `${pending} new review${pending === 1 ? "" : "s"} waiting for approval.` : "All reviews are published."} After marking an
-        appointment completed, use “Copy review link” to send the client a link to leave a review.
+        {pending ? `${pending} new review${pending === 1 ? "" : "s"} waiting for approval.` : "All reviews are published."} When you mark an
+        appointment completed, the client gets a review request by email automatically — or tap “Text review link”.
       </p>
       <div className="space-y-2.5">
         {rows.map((r) => (
