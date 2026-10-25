@@ -1,0 +1,53 @@
+plugins {
+    id "com.android.application"
+}
+
+def host = project.property("hommeHost")
+def ciVersion = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace "llc.homme.app"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "llc.homme.app"
+        minSdk 21
+        targetSdk 34
+        versionCode ciVersion
+        versionName "1.0.${ciVersion}"
+
+        manifestPlaceholders = [
+            hostName  : host,
+            launchUrl : "https://${host}/",
+        ]
+        resValue "string", "asset_statements",
+            "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${host}\\\"}}]"
+    }
+
+    signingConfigs {
+        release {
+            // Decoded from the ANDROID_KEYSTORE_BASE64 secret by the GitHub workflow; never committed.
+            storeFile file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "../homme-release.p12")
+            storeType "pkcs12"
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias "homme"
+            keyPassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

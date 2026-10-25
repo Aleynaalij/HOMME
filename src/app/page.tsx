@@ -8,6 +8,7 @@ import { Stars } from "@/components/Stars";
 import { HoursCard } from "@/components/HoursCard";
 import { ReviewsList } from "@/components/ReviewsList";
 import { LiveBanner, LiveNavLink, LiveSection } from "@/components/live";
+import { InstallApp } from "@/components/InstallApp";
 import { ChevronRightIcon, ClockIcon, InstagramIcon, PinIcon, TikTokIcon } from "@/components/icons";
 
 export const revalidate = 60;
@@ -173,6 +174,10 @@ export default async function Home() {
             />
           </div>
         </div>
+      </section>
+
+      <section className="px-5 pb-16">
+        <InstallApp />
       </section>
 
       {/* Footer */}

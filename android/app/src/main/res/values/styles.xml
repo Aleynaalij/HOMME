@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Homme" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:statusBarColor">@color/homme_black</item>
+        <item name="android:navigationBarColor">@color/homme_black</item>
+    </style>
+</resources>

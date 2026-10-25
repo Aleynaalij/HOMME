@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "llc.homme.app",
+      "sha256_cert_fingerprints": ["75:59:24:18:E3:0A:9A:DB:6A:2D:59:B2:36:89:FF:1D:F4:EC:5A:C5:DA:2C:86:C7:96:6E:A5:7F:A5:0F:D1:03"]
+    }
+  }
+]
