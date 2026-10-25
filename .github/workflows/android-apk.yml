@@ -43,19 +43,24 @@ jobs:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/homme-release.p12
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          gradle -p android assembleRelease --no-daemon
-          cp android/app/build/outputs/apk/release/app-release.apk homme.apk
+          gradle -p android assembleClientRelease assembleAdminRelease --no-daemon
+          cp android/app/build/outputs/apk/client/release/app-client-release.apk homme.apk
+          cp android/app/build/outputs/apk/admin/release/app-admin-release.apk homme-admin.apk
 
       - name: Verify APK
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          "$BT/apksigner" verify --verbose --print-certs homme.apk
-          "$BT/aapt2" dump badging homme.apk | head -20
+          for f in homme.apk homme-admin.apk; do
+            "$BT/apksigner" verify --verbose --print-certs "$f"
+            "$BT/aapt2" dump badging "$f" | head -5
+          done
 
       - uses: actions/upload-artifact@v4
         with:
-          name: homme-apk
-          path: homme.apk
+          name: homme-apks
+          path: |
+            homme.apk
+            homme-admin.apk
 
       - name: Publish release
         if: steps.key.outputs.signed == 'true'
@@ -64,6 +69,11 @@ jobs:
           tag_name: android-v${{ github.run_number }}
           name: HOMME Android v1.0.${{ github.run_number }}
           body: |
-            Download **homme.apk** on an Android phone, open it, and allow "Install unknown apps" if asked.
-          files: homme.apk
+            - **homme.apk**: the HOMME app for clients
+            - **homme-admin.apk**: HOMME Admin, Tash's dashboard
+
+            Download on an Android phone, open it, and allow "Install unknown apps" if asked.
+          files: |
+            homme.apk
+            homme-admin.apk
           make_latest: "true"

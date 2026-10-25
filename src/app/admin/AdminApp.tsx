@@ -9,6 +9,7 @@ import { brand } from "@/lib/config";
 import { Logo } from "@/components/Logo";
 import { Stars } from "@/components/Stars";
 import { LiveDot } from "@/components/live";
+import { ADMIN_APK_URL, InstallApp } from "@/components/InstallApp";
 import { PLATFORM_LABEL, type LiveStatus, type Platform } from "@/lib/live-shared";
 
 const sb = () => getBrowserClient();
@@ -30,7 +31,15 @@ export function AdminApp() {
   }, [session]);
 
   if (session === undefined) return <Shell><p className="text-muted">Loading…</p></Shell>;
-  if (!session) return <Shell><Login /></Shell>;
+  if (!session)
+    return (
+      <Shell>
+        <Login />
+        <div className="mx-auto mt-6 max-w-sm pb-10">
+          <InstallApp title="Get HOMME Admin" blurb="Your dashboard as an app on your phone." apkUrl={ADMIN_APK_URL} />
+        </div>
+      </Shell>
+    );
   if (isAdmin === null) return <Shell><p className="text-muted">Checking access…</p></Shell>;
   if (!isAdmin)
     return (

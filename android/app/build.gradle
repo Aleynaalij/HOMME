@@ -10,18 +10,31 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "llc.homme.app"
         minSdk 21
         targetSdk 34
         versionCode ciVersion
         versionName "1.0.${ciVersion}"
 
-        manifestPlaceholders = [
-            hostName  : host,
-            launchUrl : "https://${host}/",
-        ]
+        manifestPlaceholders = [hostName: host]
         resValue "string", "asset_statements",
             "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${host}\\\"}}]"
+    }
+
+    // Two apps from one project: the client app and Tash's dashboard app.
+    flavorDimensions = ["app"]
+    productFlavors {
+        client {
+            dimension "app"
+            applicationId "llc.homme.app"
+            manifestPlaceholders = [launchUrl: "https://${host}/"]
+            resValue "string", "app_name", "HOMME"
+        }
+        admin {
+            dimension "app"
+            applicationId "llc.homme.admin"
+            manifestPlaceholders = [launchUrl: "https://${host}/admin"]
+            resValue "string", "app_name", "HOMME Admin"
+        }
     }
 
     signingConfigs {
