@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase";
 import { brand, mapsLink } from "@/lib/config";
+import { rememberAppointment } from "@/lib/myAppointments";
 import type { PublicAppointment } from "@/lib/types";
 import { duration, formatDateLong, formatTime, money } from "@/lib/format";
 import { Logo } from "@/components/Logo";
@@ -40,17 +41,26 @@ export function AppointmentView({
   const [body, setBody] = useState("");
   const [reviewed, setReviewed] = useState(appt.has_review);
 
+  // Remember this booking on the device so the home page can say "welcome back"
+  useEffect(() => rememberAppointment(token), [token]);
+
   const totalMin = appt.services.reduce((a, s) => a + s.duration_min, 0);
   const cancelled = appt.status === "cancelled";
-  const headline = cancelled
-    ? "Appointment cancelled"
-    : justPaid
-      ? "Paid & confirmed"
-      : appt.status === "pending_payment"
-        ? "Almost there"
-        : isNew
-          ? "You're booked!"
-          : "Your appointment";
+  const completed = appt.status === "completed";
+  const first = appt.customer_name.split(/\s+/)[0];
+  const again = `/book?services=${appt.services.map((s) => s.id).join(",")}`;
+
+  const [headline, accent] = cancelled
+    ? ["Appointment", "cancelled."]
+    : completed
+      ? [`Thanks, ${first}.`, "Looking sharp."]
+      : justPaid
+        ? ["Paid &", "confirmed."]
+        : appt.status === "pending_payment"
+          ? ["Almost", "there."]
+          : isNew
+            ? ["You're", "booked."]
+            : ["See you", "soon."];
 
   async function cancel() {
     if (!confirm("Cancel this appointment?")) return;
@@ -82,98 +92,119 @@ export function AppointmentView({
   }
 
   return (
-    <div className="grain min-h-dvh">
-      <header className="mx-auto flex h-16 max-w-xl items-center justify-center px-5">
+    <div className="relative min-h-dvh overflow-x-clip">
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-25%] h-[60vh] w-[120vw] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(closest-side,rgba(201,169,106,0.18),transparent)]" />
+      <header className="relative mx-auto flex h-[4.5rem] max-w-xl items-center justify-center px-5">
         <Logo className="h-6 w-auto" />
       </header>
-      <main className="mx-auto max-w-xl px-5 pb-16 pt-6">
-        <div className="text-center">
+
+      <main className="relative mx-auto max-w-xl px-5 pb-20 pt-6">
+        <div className="float-in text-center">
           {!cancelled && (
-            <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-gold text-black">
-              <CheckIcon className="h-7 w-7" />
+            <div className="mx-auto mb-6 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-gold-soft to-gold-deep text-black shadow-[0_10px_40px_-10px_rgba(201,169,106,0.7)]">
+              <CheckIcon className="h-6 w-6" />
             </div>
           )}
-          <h1 className="font-display text-4xl font-bold">{headline}</h1>
-          {isNew && !cancelled && <p className="mt-3 text-muted">Bookmark this page — you can view, add to calendar or cancel from here.</p>}
+          <h1 className="font-display text-5xl leading-tight text-ivory">
+            {headline} <em className="text-gold-gradient italic">{accent}</em>
+          </h1>
+          {isNew && !cancelled && (
+            <p className="mt-4 text-muted">We saved this to your phone — come back anytime to view, add to calendar or cancel.</p>
+          )}
         </div>
 
         {paymentCanceled && appt.payment_status !== "paid" && (
-          <div className="mt-6 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold-soft">
-            Payment wasn&apos;t completed. Your slot is held for 30 minutes — pay below or choose to pay at the shop by rebooking.
+          <div className="mt-6 rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold-soft">
+            Payment wasn&apos;t completed. Your slot is held for 30 minutes — pay below, or book again and choose pay at the shop.
           </div>
         )}
-        {msg && <div className="mt-6 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{msg}</div>}
+        {msg && <div className="mt-6 rounded-2xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">{msg}</div>}
 
-        <div className="card mt-8 p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="eyebrow">{STATUS_LABEL[appt.status]}</p>
-              <p className="mt-2 text-xl font-semibold">{formatDateLong(appt.starts_at)}</p>
-              <p className="text-muted">{formatTime(appt.starts_at)} – {formatTime(appt.ends_at)} · {duration(totalMin)}</p>
+        {/* Ticket */}
+        <div className="float-in relative mt-10 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015]" style={{ animationDelay: "120ms" }}>
+          <div className="p-7">
+            <div className="flex items-center justify-between">
+              <span className={`text-[0.6rem] font-semibold uppercase tracking-[0.35em] ${cancelled ? "text-danger" : "text-gold"}`}>{STATUS_LABEL[appt.status]}</span>
+              <span className="text-[0.6rem] font-semibold uppercase tracking-[0.35em] text-muted">with {brand.barber}</span>
             </div>
+            <p className={`mt-5 font-display text-3xl text-ivory ${cancelled ? "line-through decoration-1 opacity-60" : ""}`}>{formatDateLong(appt.starts_at)}</p>
+            <p className="mt-1 text-lg text-muted">{formatTime(appt.starts_at)} – {formatTime(appt.ends_at)} · {duration(totalMin)}</p>
           </div>
-          <ul className="mt-5 space-y-1.5 border-t border-line pt-5 text-sm">
-            {appt.services.map((s) => (
-              <li key={s.id} className="flex justify-between">
-                <span>{s.name}</span>
-                <span className="text-muted">{s.price_is_starting ? "from " : ""}{money(s.price_cents)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 flex justify-between border-t border-line pt-4 font-semibold">
-            <span>Total</span>
-            <span>
-              {money(appt.amount_cents)}{" "}
-              <span className="ml-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-muted">
-                {appt.payment_status === "paid" ? "Paid" : appt.payment_method === "card" ? "Unpaid" : "Pay at shop"}
+
+          {/* perforation */}
+          <div className="relative flex items-center">
+            <span className="absolute -left-3 h-6 w-6 rounded-full bg-bg" />
+            <span className="mx-5 h-px flex-1 border-t border-dashed border-white/15" />
+            <span className="absolute -right-3 h-6 w-6 rounded-full bg-bg" />
+          </div>
+
+          <div className="p-7">
+            <ul className="space-y-2.5">
+              {appt.services.map((s) => (
+                <li key={s.id} className="flex items-baseline">
+                  <span className="font-display text-lg text-ivory">{s.name}</span>
+                  <span className="leader" />
+                  <span className="text-muted">{s.price_is_starting ? "from " : ""}{money(s.price_cents)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-5 flex items-baseline justify-between border-t border-white/8 pt-5">
+              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.3em] text-muted">Total</span>
+              <span className="font-display text-2xl text-ivory">
+                {money(appt.amount_cents)}
+                <span className="ml-2 rounded-full border border-white/10 px-2.5 py-0.5 align-middle font-sans text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-muted">
+                  {appt.payment_status === "paid" ? "Paid" : appt.payment_method === "card" ? "Unpaid" : "Pay at shop"}
+                </span>
               </span>
-            </span>
-          </div>
-          <div className="mt-5 flex items-start gap-2 border-t border-line pt-5 text-sm text-muted">
-            <PinIcon className="mt-0.5 h-4 w-4 shrink-0" />
-            <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="hover:text-fg">
-              {brand.suite}<br />{brand.address.join(", ")}
+            </div>
+            <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="mt-6 flex items-start gap-3 rounded-2xl bg-white/[0.03] p-4 text-sm text-muted transition hover:text-ivory">
+              <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
+              <span><span className="block text-ivory">{brand.suite}</span>{brand.address.join(", ")}</span>
             </a>
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-6 grid gap-3">
           {appt.status === "pending_payment" && cardEnabled && (
-            <button onClick={pay} disabled={busy} className="btn-primary">Pay {money(appt.amount_cents)} now</button>
+            <button onClick={pay} disabled={busy} className="btn-gold">Pay {money(appt.amount_cents)} now</button>
           )}
-          {!cancelled && appt.status !== "completed" && (
-            <a href={`/api/ics/${token}`} className="btn-ghost">Add to calendar</a>
+          {!cancelled && !completed && (
+            <div className="grid grid-cols-2 gap-3">
+              <a href={`/api/ics/${token}`} className="btn-line whitespace-nowrap !px-3">Add to calendar</a>
+              <a href={mapsLink} target="_blank" rel="noopener noreferrer" className="btn-line whitespace-nowrap !px-3">Directions</a>
+            </div>
           )}
+          {(cancelled || completed) && <Link href={again} className="btn-gold">Book again</Link>}
           {appt.can_cancel && (
-            <button onClick={cancel} disabled={busy} className="btn-ghost !border-danger/40 !text-danger">Cancel appointment</button>
+            <button onClick={cancel} disabled={busy} className="mt-2 text-sm text-muted underline-offset-4 hover:text-danger hover:underline">Cancel appointment</button>
           )}
-          {cancelled && <Link href="/book" className="btn-primary">Book again</Link>}
         </div>
 
-        {appt.status === "completed" && (
-          <div className="card mt-8 p-6">
+        {completed && (
+          <div className="lux-card mt-8 p-7">
             {reviewed ? (
-              <p className="text-center text-muted">Thanks for your review! 🙏</p>
+              <p className="text-center font-display text-2xl text-ivory">Thank you for the review. <em className="text-gold-gradient italic">It means everything.</em></p>
             ) : (
               <form onSubmit={review}>
-                <h2 className="font-display text-2xl font-bold">How was your cut?</h2>
-                <div className="mt-4 flex gap-1">
+                <h2 className="font-display text-3xl text-ivory">How was your <em className="text-gold-gradient italic">cut?</em></h2>
+                <div className="mt-5 flex gap-1.5">
                   {[1, 2, 3, 4, 5].map((i) => (
-                    <button key={i} type="button" onClick={() => setRating(i)} aria-label={`${i} stars`} className={i <= rating ? "text-gold" : "text-line"}>
-                      <StarIcon className="h-8 w-8" />
+                    <button key={i} type="button" onClick={() => setRating(i)} aria-label={`${i} stars`}
+                      className={`transition ${i <= rating ? "scale-100 text-gold" : "scale-90 text-white/15"}`}>
+                      <StarIcon className="h-9 w-9" />
                     </button>
                   ))}
                 </div>
-                <textarea className="input mt-4 min-h-24" placeholder="Tell others about your experience (optional)" maxLength={1000}
+                <textarea className="input mt-5 min-h-28" placeholder="Tell others about your experience (optional)" maxLength={1000}
                   value={body} onChange={(e) => setBody(e.target.value)} />
-                <button className="btn-primary mt-4 w-full" disabled={busy}>Submit review</button>
+                <button className="btn-gold mt-4 w-full" disabled={busy}>Share review</button>
               </form>
             )}
           </div>
         )}
 
-        <p className="mt-10 text-center text-sm text-muted">
-          <Link href="/" className="hover:text-fg">← Back to HOMME</Link>
+        <p className="mt-12 text-center">
+          <Link href="/" className="text-[0.65rem] font-semibold uppercase tracking-[0.35em] text-muted hover:text-ivory">← Back to HOMME</Link>
         </p>
       </main>
     </div>

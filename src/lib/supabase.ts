@@ -4,7 +4,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // site working if the Vercel env vars are missing or mistyped.
 const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, "");
 const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-export const supabaseUrl = envUrl && /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(envUrl) ? envUrl : "https://gkhdmpbimtxdijmtucsf.supabase.co";
+// (localhost is allowed for local testing against a Supabase dev stack)
+export const supabaseUrl = envUrl && /^(https:\/\/[a-z0-9]+\.supabase\.co|http:\/\/(localhost|127\.0\.0\.1):\d+)$/.test(envUrl) ? envUrl : "https://gkhdmpbimtxdijmtucsf.supabase.co";
 export const supabaseAnonKey = envKey && /^(sb_publishable_|eyJ)/.test(envKey) ? envKey : "sb_publishable_oIwrNexTJ0-QkqeK6Bk84w_JsxaOoVS";
 
 let browserClient: SupabaseClient | null = null;

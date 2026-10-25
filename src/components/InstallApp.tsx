@@ -54,7 +54,7 @@ export function InstallApp({
   }
 
   return (
-    <div className="card mx-auto flex max-w-xl flex-col items-center gap-4 p-6 text-center">
+    <div className="lux-card mx-auto flex max-w-xl flex-col items-center gap-4 p-7 text-center">
       <div>
         <p className="font-display text-2xl font-bold">{title}</p>
         <p className="mt-1 text-sm text-muted">
@@ -65,9 +65,9 @@ export function InstallApp({
       </div>
       {platform !== "ios" && (
         <div className="flex flex-wrap justify-center gap-2">
-          {prompt && <button onClick={install} className="btn-primary">Install app</button>}
+          {prompt && <button onClick={install} className="btn-gold">Install app</button>}
           {platform === "android" && (
-            <a href={apkUrl} className={prompt ? "btn-ghost" : "btn-primary"}>Download for Android (APK)</a>
+            <a href={apkUrl} className={prompt ? "btn-line" : "btn-gold"}>Download for Android (APK)</a>
           )}
         </div>
       )}

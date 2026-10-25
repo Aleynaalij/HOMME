@@ -72,16 +72,16 @@ export function LiveSection() {
   const status = useLiveStatus();
   if (!status?.live || !status.channel) return null;
   return (
-    <section className="border-b border-line bg-surface/40">
-      <div className="mx-auto max-w-6xl px-5 py-14">
+    <section className="border-y border-white/5 bg-white/[0.02]">
+      <div className="mx-auto max-w-7xl px-5 py-16 md:px-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.3em] text-red-500"><LiveDot /> Live now</p>
-            <h2 className="mt-3 font-display text-4xl font-bold">{status.title || "In the chair with Tash"}</h2>
+            <h2 className="mt-3 font-display text-4xl text-ivory md:text-5xl">{status.title || <>In the chair <em className="text-gold-gradient italic">with Tash</em></>}</h2>
           </div>
           <div className="flex gap-2">
-            <Link href="/live" className="btn-ghost">Full screen</Link>
-            <Link href="/book" className="btn-primary">Book your cut</Link>
+            <Link href="/live" className="btn-line">Full screen</Link>
+            <Link href="/book" className="btn-gold">Book your cut</Link>
           </div>
         </div>
         <LivePlayer status={status} />

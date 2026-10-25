@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { menuGroups } from "@/lib/menu";
 import { getBrowserClient } from "@/lib/supabase";
 import type { BusinessHours, Service } from "@/lib/types";
 import { addDays, duration, formatDateLong, formatTime, money, shopNow, ymdWeekday } from "@/lib/format";
@@ -11,24 +12,29 @@ import { ArrowLeftIcon, CheckIcon, ClockIcon } from "@/components/icons";
 
 type Step = "services" | "time" | "details";
 const DAYS_AHEAD = 60;
+const STEPS: { id: Step; label: string }[] = [
+  { id: "services", label: "Service" },
+  { id: "time", label: "Time" },
+  { id: "details", label: "Details" },
+];
 
 export function BookingFlow({
   services,
   hours,
-  initialServiceId,
+  initialServiceIds,
   cardEnabled,
   waitlistEnabled,
 }: {
   services: Service[];
   hours: BusinessHours[];
-  initialServiceId?: string;
+  initialServiceIds?: string[];
   cardEnabled: boolean;
   waitlistEnabled: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("services");
   const [selected, setSelected] = useState<string[]>(
-    initialServiceId && services.some((s) => s.id === initialServiceId) ? [initialServiceId] : [],
+    (initialServiceIds ?? []).filter((id) => services.some((s) => s.id === id)),
   );
   const [date, setDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[] | null>(null);
@@ -39,8 +45,6 @@ export function BookingFlow({
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
-  const main = services.filter((s) => !s.is_addon);
-  const addons = services.filter((s) => s.is_addon);
   const chosen = services.filter((s) => selected.includes(s.id));
   const totalMin = chosen.reduce((a, s) => a + s.duration_min, 0);
   const totalCents = chosen.reduce((a, s) => a + s.price_cents, 0);
@@ -127,21 +131,29 @@ export function BookingFlow({
 
   return (
     <div className="min-h-dvh pb-40">
-      <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-white/5 bg-bg/80 backdrop-blur-2xl">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-5">
           {step === "services" ? (
-            <Link href="/" className="btn-ghost !p-2.5" aria-label="Back home"><ArrowLeftIcon /></Link>
+            <Link href="/" className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-ivory hover:border-gold" aria-label="Back home"><ArrowLeftIcon /></Link>
           ) : (
-            <button onClick={back} className="btn-ghost !p-2.5" aria-label="Back"><ArrowLeftIcon /></button>
+            <button onClick={back} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-ivory hover:border-gold" aria-label="Back"><ArrowLeftIcon /></button>
           )}
           <Logo className="h-6 w-auto" />
           <span className="w-10" />
         </div>
-        <div className="mx-auto flex max-w-3xl gap-1.5 px-5 pb-3">
-          {(["services", "time", "details"] as Step[]).map((s, i) => (
-            <div key={s} className={`h-1 flex-1 rounded-full ${i <= ["services", "time", "details"].indexOf(step) ? "bg-gold" : "bg-line"}`} />
-          ))}
-        </div>
+        <ol className="mx-auto grid max-w-3xl grid-cols-3 gap-3 px-5 pb-4">
+          {STEPS.map((st, i) => {
+            const idx = STEPS.findIndex((x) => x.id === step);
+            return (
+              <li key={st.id}>
+                <div className={`h-px w-full ${i <= idx ? "bg-gold" : "bg-white/10"}`} />
+                <p className={`mt-2 text-[0.6rem] font-semibold uppercase tracking-[0.3em] ${i <= idx ? "text-gold" : "text-muted/60"}`}>
+                  <span className="font-display normal-case italic tracking-normal">0{i + 1}</span> {st.label}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
       </header>
 
       <main className="mx-auto max-w-3xl px-5 pt-8">
@@ -149,29 +161,27 @@ export function BookingFlow({
 
         {step === "services" && (
           <section>
-            <h1 className="font-display text-4xl font-bold">Choose a service</h1>
-            <p className="mt-2 text-muted">Pick your cut, then stack any add-ons.</p>
-            <div className="mt-8 space-y-2.5">
-              {main.map((s) => (
-                <ServiceRow key={s.id} s={s} active={selected.includes(s.id)} onClick={() => toggle(s.id, false)} />
-              ))}
-            </div>
-            {addons.length > 0 && (
-              <>
-                <h2 className="mb-3 mt-10 text-xs font-semibold uppercase tracking-[0.25em] text-muted">Add-ons</h2>
+            <h1 className="font-display text-[2.6rem] leading-tight text-ivory">Choose your <em className="text-gold-gradient italic">service.</em></h1>
+            <p className="mt-2 text-muted">Pick your cut, then add any finishing touches.</p>
+            {menuGroups(services).map((g) => (
+              <div key={g.title} className="mt-10">
+                <div className="mb-3 flex items-baseline justify-between border-b border-gold/20 pb-2">
+                  <h2 className="font-display text-2xl italic text-gold-soft">{g.title}</h2>
+                  <span className="text-[0.58rem] font-semibold uppercase tracking-[0.3em] text-muted">{g.note}</span>
+                </div>
                 <div className="space-y-2.5">
-                  {addons.map((s) => (
-                    <ServiceRow key={s.id} s={s} addon active={selected.includes(s.id)} onClick={() => toggle(s.id, true)} />
+                  {g.items.map((s) => (
+                    <ServiceRow key={s.id} s={s} addon={s.is_addon} active={selected.includes(s.id)} onClick={() => toggle(s.id, s.is_addon)} />
                   ))}
                 </div>
-              </>
-            )}
+              </div>
+            ))}
           </section>
         )}
 
         {step === "time" && date && (
           <section>
-            <h1 className="font-display text-4xl font-bold">Pick a time</h1>
+            <h1 className="font-display text-[2.6rem] leading-tight text-ivory">Pick a <em className="text-gold-gradient italic">time.</em></h1>
             <p className="mt-2 text-muted">{chosen.map((s) => s.name).join(" + ")} · {duration(totalMin)}</p>
 
             <div className="no-scrollbar -mx-5 mt-8 flex gap-2 overflow-x-auto px-5 pb-2">
@@ -213,7 +223,7 @@ export function BookingFlow({
               ))}
             </div>
             {slots?.length === 0 && (
-              <div className="card mt-2 p-6 text-center text-muted">
+              <div className="lux-card mt-2 p-6 text-center text-muted">
                 Fully booked this day{waitlistEnabled ? " — join the waitlist and you'll hear first if a spot opens." : " — try another date."}
               </div>
             )}
@@ -225,8 +235,8 @@ export function BookingFlow({
 
         {step === "details" && slot && (
           <form id="details" onSubmit={submit}>
-            <h1 className="font-display text-4xl font-bold">Your details</h1>
-            <div className="card mt-6 p-5">
+            <h1 className="font-display text-[2.6rem] leading-tight text-ivory">Almost <em className="text-gold-gradient italic">there.</em></h1>
+            <div className="lux-card mt-6 p-5">
               <p className="font-semibold">{formatDateLong(slot)} · {formatTime(slot)}</p>
               <ul className="mt-3 space-y-1 text-sm text-muted">
                 {chosen.map((s) => (
@@ -282,13 +292,13 @@ export function BookingFlow({
             )}
           </div>
           {step === "services" && (
-            <button className="btn-primary" disabled={chosen.length === 0} onClick={() => setStep("time")}>Continue</button>
+            <button className="btn-gold" disabled={chosen.length === 0} onClick={() => setStep("time")}>Continue</button>
           )}
           {step === "time" && (
-            <button className="btn-primary" disabled={!slot} onClick={() => setStep("details")}>Continue</button>
+            <button className="btn-gold" disabled={!slot} onClick={() => setStep("details")}>Continue</button>
           )}
           {step === "details" && (
-            <button className="btn-primary" form="details" type="submit" disabled={submitting}>
+            <button className="btn-gold" form="details" type="submit" disabled={submitting}>
               {submitting ? "Booking…" : payment === "card" ? "Continue to payment" : "Confirm booking"}
             </button>
           )}
@@ -304,11 +314,11 @@ function ServiceRow({ s, active, addon, onClick }: { s: Service; active: boolean
       type="button"
       onClick={onClick}
       className={`flex w-full items-center justify-between rounded-2xl border p-5 text-left transition ${
-        active ? "border-gold bg-gold/[0.07]" : "border-line bg-surface hover:border-muted"
+        active ? "border-gold/70 bg-gold/[0.08] shadow-[0_0_0_1px_rgba(201,169,106,0.25)]" : "border-white/8 bg-white/[0.02] hover:border-white/20"
       }`}
     >
       <span>
-        <span className="block font-semibold">{s.name}</span>
+        <span className="block font-display text-xl text-ivory">{s.name}</span>
         <span className="mt-1 block text-sm text-muted">
           {addon && !s.price_is_starting ? "+" : ""}{s.price_is_starting ? "from " : ""}{money(s.price_cents)} · {duration(s.duration_min)}
         </span>
@@ -326,7 +336,7 @@ function PayOption({ active, disabled, onClick, title, sub }: { active: boolean;
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-2xl border p-4 text-left transition disabled:opacity-40 ${active ? "border-gold bg-gold/[0.07]" : "border-line bg-surface hover:border-muted"}`}
+      className={`rounded-2xl border p-4 text-left transition disabled:opacity-40 ${active ? "border-gold/70 bg-gold/[0.08] shadow-[0_0_0_1px_rgba(201,169,106,0.25)]" : "border-white/8 bg-white/[0.02] hover:border-white/20"}`}
     >
       <span className="block font-semibold">{title}</span>
       <span className="block text-sm text-muted">{sub}</span>
@@ -360,7 +370,7 @@ function JoinWaitlist({ date, serviceNames, prominent }: { date: string; service
 
   if (state === "done") {
     return (
-      <div className="card mt-4 p-5 text-center">
+      <div className="lux-card mt-4 p-5 text-center">
         <p className="font-semibold">You&apos;re on the waitlist ✓</p>
         <p className="mt-1 text-sm text-muted">If a spot opens{f.anyDay ? "" : ` on ${formatDateLong(`${date}T12:00:00Z`)}`}, you&apos;ll be the first to know.</p>
       </div>
@@ -369,14 +379,14 @@ function JoinWaitlist({ date, serviceNames, prominent }: { date: string; service
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={`${prominent ? "btn-primary mt-4 w-full" : "mt-5 w-full text-center text-sm text-muted underline-offset-4 hover:text-fg hover:underline"}`}>
+      <button type="button" onClick={() => setOpen(true)} className={`${prominent ? "btn-gold mt-4 w-full" : "mt-5 w-full text-center text-sm text-muted underline-offset-4 hover:text-fg hover:underline"}`}>
         {prominent ? "Join the waitlist" : "Can’t find a time that works? Join the waitlist"}
       </button>
     );
   }
 
   return (
-    <form onSubmit={submit} className="card mt-4 space-y-3 p-5">
+    <form onSubmit={submit} className="lux-card mt-4 space-y-3 p-5">
       <p className="font-semibold">Join the waitlist</p>
       <p className="text-sm text-muted">We&apos;ll email you the moment a spot opens. First to book gets it.</p>
       <input className="input" required placeholder="Full name" maxLength={120} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
@@ -387,7 +397,7 @@ function JoinWaitlist({ date, serviceNames, prominent }: { date: string; service
         Any day works for me
       </label>
       {error && <p className="text-sm text-danger">{error}</p>}
-      <button className="btn-primary w-full" disabled={state === "busy"}>{state === "busy" ? "Joining…" : "Join waitlist"}</button>
+      <button className="btn-gold w-full" disabled={state === "busy"}>{state === "busy" ? "Joining…" : "Join waitlist"}</button>
     </form>
   );
 }

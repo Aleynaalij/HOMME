@@ -6,8 +6,9 @@ import { BookingFlow } from "./BookingFlow";
 export const metadata: Metadata = { title: "Book with Tash — HOMME" };
 export const revalidate = 60;
 
-export default async function BookPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
-  const { service } = await searchParams;
+export default async function BookPage({ searchParams }: { searchParams: Promise<{ service?: string; services?: string }> }) {
+  const { service, services: serviceList } = await searchParams;
+  const initialServiceIds = (serviceList ?? service ?? "").split(",").filter(Boolean).slice(0, 10);
   const sb = getServerClient();
   const [services, hours, settings] = await Promise.all([
     sb.from("services").select("*").eq("active", true).order("sort_order"),
@@ -18,7 +19,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     <BookingFlow
       services={(services.data ?? []) as Service[]}
       hours={(hours.data ?? []) as BusinessHours[]}
-      initialServiceId={service}
+      initialServiceIds={initialServiceIds}
       cardEnabled={Boolean(process.env.STRIPE_SECRET_KEY)}
       waitlistEnabled={settings.data?.waitlist_enabled !== false}
     />
