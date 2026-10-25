@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "HOMME — Who's your barber?",
     description: "Book your next cut with Tash in Camp Springs, MD.",
-    images: ["/icon-512.png"],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Tash at work in her suite at HOMME" }],
   },
 };
 

@@ -146,15 +146,10 @@ export default async function Home() {
             <div className="relative mx-auto aspect-[4/5] w-full max-w-md">
               <div className="absolute inset-0 rounded-[2rem] border border-gold/30" />
               <div className="absolute inset-3 flex flex-col items-center justify-center overflow-hidden rounded-[1.6rem] bg-[radial-gradient(circle_at_30%_20%,rgba(201,169,106,0.25),transparent_60%),linear-gradient(180deg,#141210,#080706)]">
-                {photos[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={galleryUrl(photos[0].path)} alt="Tash at work" className="absolute inset-0 h-full w-full object-cover opacity-90" />
-                ) : (
-                  <>
-                    <span className="font-display text-[11rem] italic leading-none text-gold-gradient">T</span>
-                    <span className="mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.5em] text-muted">Est. 20+ years</span>
-                  </>
-                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/tash-chair.jpg" alt="Tash cutting a client's hair in her suite at HOMME" loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               </div>
               <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-gold/30 bg-bg px-5 py-2 text-[0.62rem] font-semibold uppercase tracking-[0.35em] text-gold">
                 {brand.barber} · Master barber
