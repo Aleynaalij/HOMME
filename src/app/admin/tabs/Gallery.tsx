@@ -26,7 +26,7 @@ export function Gallery() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    const { data } = await sb().from("gallery_photos").select("*").order("created_at", { ascending: false });
+    const { data } = await sb().from("gallery_photos").select("*").not("path", "like", "/%").order("created_at", { ascending: false });
     setPhotos((data ?? []) as Photo[]);
   }, []);
   useEffect(() => { load(); }, [load]);

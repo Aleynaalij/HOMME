@@ -12,7 +12,8 @@ export async function getSiteData() {
     sb.from("business_hours").select("*").order("weekday"),
     sb.from("reviews").select("*").eq("published", true).order("created_at", { ascending: false }),
     sb.from("settings").select("site_banner, waitlist_enabled").eq("id", 1).single(),
-    sb.from("gallery_photos").select("id, path, caption").order("created_at", { ascending: false }).limit(12),
+    // "The work" is only for photos Tash uploads (skip files bundled with the site)
+    sb.from("gallery_photos").select("id, path, caption").not("path", "like", "/%").order("created_at", { ascending: false }).limit(12),
   ]);
   const h = (hours.data ?? []) as BusinessHours[];
   return {
