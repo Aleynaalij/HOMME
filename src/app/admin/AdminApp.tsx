@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { getBrowserClient } from "@/lib/supabase";
 import type { Appointment, AppointmentStatus, BusinessHours, Review, Service } from "@/lib/types";
 import { WEEKDAYS, duration, formatDateShort, formatTime, money, shopNow } from "@/lib/format";
 import { brand } from "@/lib/config";
@@ -12,8 +11,25 @@ import { LiveDot } from "@/components/live";
 import { ADMIN_APK_URL, InstallApp } from "@/components/InstallApp";
 import { PLATFORM_LABEL, type LiveStatus, type Platform } from "@/lib/live-shared";
 
-const sb = () => getBrowserClient();
-type Tab = "appointments" | "services" | "hours" | "live" | "reviews";
+import { sb } from "./shared";
+import { Clients } from "./tabs/Clients";
+import { Announce } from "./tabs/Announce";
+import { Marketing } from "./tabs/Marketing";
+import { Gallery } from "./tabs/Gallery";
+import { BookForClient } from "./tabs/BookForClient";
+
+type Tab = "appointments" | "clients" | "announce" | "marketing" | "gallery" | "services" | "hours" | "live" | "reviews";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "appointments", label: "Appointments" },
+  { id: "clients", label: "Clients" },
+  { id: "announce", label: "Announce" },
+  { id: "marketing", label: "QR & Marketing" },
+  { id: "gallery", label: "Gallery" },
+  { id: "services", label: "Services" },
+  { id: "hours", label: "Hours" },
+  { id: "live", label: "Live" },
+  { id: "reviews", label: "Reviews" },
+];
 
 export function AdminApp() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -113,16 +129,20 @@ function Dashboard({ email }: { email: string }) {
           </div>
         </div>
         <nav className="no-scrollbar mx-auto flex max-w-5xl gap-1 overflow-x-auto px-5 pb-3">
-          {(["appointments", "services", "hours", "live", "reviews"] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize ${tab === t ? "bg-fg text-black" : "text-muted hover:text-fg"}`}>
-              {t}
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold ${tab === t.id ? "bg-fg text-black" : "text-muted hover:text-fg"}`}>
+              {t.label}
             </button>
           ))}
         </nav>
       </header>
       <main className="mx-auto max-w-5xl px-5 py-8">
         {tab === "appointments" && <Appointments />}
+        {tab === "clients" && <Clients />}
+        {tab === "announce" && <Announce />}
+        {tab === "marketing" && <Marketing />}
+        {tab === "gallery" && <Gallery />}
         {tab === "services" && <Services />}
         {tab === "hours" && <Hours />}
         {tab === "live" && <Live />}
@@ -142,7 +162,46 @@ const STATUS_STYLE: Record<AppointmentStatus, string> = {
   no_show: "bg-danger/15 text-danger",
 };
 
+function Insights() {
+  const [s, setS] = useState<{ week: number; month: number; newClients: number; noShowRate: number | null } | null>(null);
+
+  useEffect(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const since90 = new Date(Date.now() - 90 * 86_400_000);
+    const from = new Date(Math.min(monthStart.getTime(), weekStart.getTime(), since90.getTime())).toISOString();
+    Promise.all([
+      sb().from("appointments").select("starts_at, amount_cents, status").gte("starts_at", from).lte("starts_at", now.toISOString()),
+      sb().from("clients").select("id", { count: "exact", head: true }).gte("created_at", monthStart.toISOString()),
+    ]).then(([a, c]) => {
+      const rows = (a.data ?? []) as { starts_at: string; amount_cents: number; status: string }[];
+      const sum = (since: Date) => rows.filter((r) => r.status === "completed" && new Date(r.starts_at) >= since).reduce((n, r) => n + r.amount_cents, 0);
+      const recent = rows.filter((r) => new Date(r.starts_at) >= since90 && ["completed", "no_show"].includes(r.status));
+      setS({
+        week: sum(weekStart),
+        month: sum(monthStart),
+        newClients: c.count ?? 0,
+        noShowRate: recent.length ? Math.round((recent.filter((r) => r.status === "no_show").length / recent.length) * 100) : null,
+      });
+    });
+  }, []);
+
+  if (!s) return null;
+  return (
+    <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Stat label="Earned this week" value={money(s.week)} />
+      <Stat label="Earned this month" value={money(s.month)} />
+      <Stat label="New clients (month)" value={String(s.newClients)} />
+      <Stat label="No-show rate (90d)" value={s.noShowRate === null ? "—" : `${s.noShowRate}%`} />
+    </div>
+  );
+}
+
 function Appointments() {
+  const [booking, setBooking] = useState(false);
   const [view, setView] = useState<"upcoming" | "past">("upcoming");
   const [rows, setRows] = useState<Appointment[] | null>(null);
 
@@ -191,11 +250,12 @@ function Appointments() {
 
   return (
     <div>
+      <Insights />
       {view === "upcoming" && rows && (
         <div className="mb-6 grid grid-cols-3 gap-3">
           <Stat label="Today" value={String(todayCount)} />
           <Stat label="Upcoming" value={String(upcomingActive.length)} />
-          <Stat label="Booked value" value={money(expected)} />
+          <Stat label="Booked ahead" value={money(expected)} />
         </div>
       )}
       <div className="mb-6 flex gap-2">
@@ -203,7 +263,9 @@ function Appointments() {
           <button key={v} onClick={() => setView(v)} className={`btn-ghost !py-1.5 capitalize ${view === v ? "!border-fg" : ""}`}>{v}</button>
         ))}
         <button onClick={load} className="btn-ghost ml-auto !py-1.5">Refresh</button>
+        <button onClick={() => setBooking(true)} className="btn-primary !px-4 !py-1.5 !text-[0.7rem]">+ Book</button>
       </div>
+      {booking && <BookForClient onClose={() => setBooking(false)} onBooked={load} />}
       {rows === null && <p className="text-muted">Loading…</p>}
       {rows?.length === 0 && <div className="card p-8 text-center text-muted">No {view} appointments.</div>}
       <div className="space-y-8">

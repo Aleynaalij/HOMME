@@ -19,6 +19,26 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
   if (!res.ok) console.error("Resend error", res.status, await res.text().catch(() => ""));
 }
 
+/** Send up to 100 emails per request (Resend batch API). Returns how many were accepted. */
+export async function sendBatch(emails: { to: string; subject: string; html: string; replyTo?: string; headers?: Record<string, string> }[]) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return 0;
+  let sent = 0;
+  for (let i = 0; i < emails.length; i += 100) {
+    const chunk = emails.slice(i, i + 100).map((e) => ({
+      from: FROM, to: [e.to], subject: e.subject, html: e.html, reply_to: e.replyTo, headers: e.headers,
+    }));
+    const res = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify(chunk),
+    });
+    if (res.ok) sent += chunk.length;
+    else console.error("Resend batch error", res.status, await res.text().catch(() => ""));
+  }
+  return sent;
+}
+
 export type ApptInfo = {
   manage_token: string;
   customer_name: string;
@@ -74,6 +94,18 @@ const button = (href: string, label: string) =>
 
 const manage = (a: ApptInfo) => `${siteUrl}/appointment/${a.manage_token}`;
 const directions = `<p style="font-size:14px;color:#9a9690;margin:20px 0 0">📍 <a href="${mapsLink}" style="color:#c9a96a">${esc(brand.suite)}, ${esc(brand.address.join(", "))}</a></p>`;
+
+export function announcementEmail(firstName: string, subject: string, message: string, unsubscribeUrl: string) {
+  const paragraphs = esc(message.replace(/\{first\}/gi, firstName))
+    .split(/\n{2,}/)
+    .map((p) => `<p style="font-size:15px;line-height:1.6;margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  return layout(
+    esc(subject),
+    `${paragraphs}<div style="margin-top:22px">${button(`${siteUrl}/book`, "Book now")}</div>
+<p style="font-size:12px;color:#9a9690;margin:28px 0 0">You're getting this because you're a client of ${esc(brand.legalName)}. <a href="${unsubscribeUrl}" style="color:#9a9690">Unsubscribe</a></p>`,
+  );
+}
 
 export const templates = {
   clientBooked: (a: ApptInfo) => ({

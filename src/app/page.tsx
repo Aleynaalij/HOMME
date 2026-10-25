@@ -9,38 +9,48 @@ import { HoursCard } from "@/components/HoursCard";
 import { ReviewsList } from "@/components/ReviewsList";
 import { LiveBanner, LiveNavLink, LiveSection } from "@/components/live";
 import { InstallApp } from "@/components/InstallApp";
+import { galleryUrl } from "@/lib/gallery";
 import { ChevronRightIcon, ClockIcon, InstagramIcon, PinIcon, TikTokIcon } from "@/components/icons";
 
 export const revalidate = 60;
 
 async function getData() {
   const sb = getServerClient();
-  const [services, hours, reviews] = await Promise.all([
+  const [services, hours, reviews, settings, photos] = await Promise.all([
     sb.from("services").select("*").eq("active", true).order("sort_order"),
     sb.from("business_hours").select("*").order("weekday"),
     sb.from("reviews").select("*").eq("published", true).order("created_at", { ascending: false }),
+    sb.from("settings").select("site_banner").eq("id", 1).single(),
+    sb.from("gallery_photos").select("id, path, caption").order("created_at", { ascending: false }).limit(12),
   ]);
   return {
     services: (services.data ?? []) as Service[],
     hours: (hours.data ?? []) as BusinessHours[],
     reviews: (reviews.data ?? []) as Review[],
+    banner: (settings.data?.site_banner as string | null) ?? null,
+    photos: (photos.data ?? []) as { id: string; path: string; caption: string | null }[],
   };
 }
 
 export default async function Home() {
-  const { services, hours, reviews } = await getData();
+  const { services, hours, reviews, banner, photos } = await getData();
   const main = services.filter((s) => !s.is_addon);
   const addons = services.filter((s) => s.is_addon);
   const avg = reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : 5;
 
   return (
     <main className="pb-28 md:pb-0">
+      {banner && (
+        <div className="bg-gold px-4 py-2 text-center text-sm font-semibold text-black">{banner}</div>
+      )}
+
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-line/60 bg-bg/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Logo className="h-7 w-auto" />
           <nav className="hidden items-center gap-8 text-sm text-muted md:flex">
             <a href="#services" className="hover:text-fg">Services</a>
+            {photos.length > 0 && <a href="#work" className="hover:text-fg">Work</a>}
             <a href="#reviews" className="hover:text-fg">Reviews</a>
             <a href="#visit" className="hover:text-fg">Visit</a>
             <LiveNavLink />
@@ -127,6 +137,33 @@ export default async function Home() {
           </>
         )}
       </section>
+
+      {/* Gallery */}
+      {photos.length > 0 && (
+        <section id="work" className="scroll-mt-20 border-t border-line">
+          <div className="mx-auto max-w-6xl px-5 py-20">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="eyebrow">Fresh out the chair</p>
+                <h2 className="mt-3 font-display text-4xl font-bold md:text-5xl">The work</h2>
+              </div>
+              <a href={brand.instagram} target="_blank" rel="noopener noreferrer" className="btn-ghost"><InstagramIcon /> More on Instagram</a>
+            </div>
+            <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3 lg:grid-cols-4">
+              {photos.map((p) => (
+                <figure key={p.id} className="group relative overflow-hidden rounded-2xl bg-surface">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={galleryUrl(p.path)} alt={p.caption ?? "Haircut by Tash at HOMME"} loading="lazy"
+                    className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" />
+                  {p.caption && (
+                    <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 text-xs font-semibold">{p.caption}</figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Reviews */}
       <section id="reviews" className="scroll-mt-20 border-t border-line bg-surface/30">
