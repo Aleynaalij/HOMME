@@ -51,7 +51,7 @@ export function Gallery() {
 
   async function remove(p: Photo) {
     if (!confirm("Delete this photo?")) return;
-    await sb().storage.from("gallery").remove([p.path]);
+    if (!p.path.startsWith("/")) await sb().storage.from("gallery").remove([p.path]);
     await sb().from("gallery_photos").delete().eq("id", p.id);
     load();
   }
