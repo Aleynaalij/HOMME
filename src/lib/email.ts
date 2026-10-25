@@ -168,7 +168,7 @@ ${button(`${siteUrl}/book`, "Book it now")}`,
     subject: "Time for a fresh cut? 💈",
     html: layout(
       "Time for a fresh cut?",
-      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${esc(name.split(/\s+/)[0] ?? name)}, it's been a few weeks since your last visit. Keep it looking sharp — ${brand.barber}'s chair is ready when you are.</p>
+      `<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${esc(name.split(/\s+/)[0] ?? name)}, it's been a couple weeks since your last visit. Keep it looking sharp — ${brand.barber}'s chair is ready when you are.</p>
 <div style="margin-top:18px">${button(`${siteUrl}/book`, "Book your next cut")}</div>
 <p style="font-size:12px;color:#9a9690;margin:28px 0 0"><a href="${unsubscribeUrl}" style="color:#9a9690">Stop these reminders</a></p>`,
     ),

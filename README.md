@@ -29,7 +29,7 @@ Booking site and owner dashboard for **Homme LLC** (Signature Salon Suites, Camp
 ## Automatic emails (Resend)
 
 Owner alert on every booking/cancellation · client confirmation & cancellation · day-before reminder ·
-review request when a cut is marked completed · waitlist alert when a slot opens · "time for a fresh cut?" N weeks after a visit.
+review request when a cut is marked completed · waitlist alert when a slot opens · "time for a fresh cut?" 2 weeks after a visit (adjustable).
 Every email event is claimed once in the database (`claim_*` functions), so nothing is sent twice.
 The daily job runs from Vercel Cron (`vercel.json` → `/api/cron/reminders`, 10 AM ET).
 

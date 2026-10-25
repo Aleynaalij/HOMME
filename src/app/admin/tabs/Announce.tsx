@@ -23,7 +23,7 @@ const TEMPLATES = [
   { label: "Openings", subject: "Openings this week", text: `Hey {first}! I've got a few openings this week. Grab yours before they're gone 💈 ${siteUrl}/book` },
   { label: "Going live", subject: "I'm live right now", text: `Hey {first}, I'm live from the chair right now — come watch! ${siteUrl}/live` },
   { label: "Closed", subject: "Schedule update", text: "Hey {first}, heads up: I'll be closed this weekend. Book your next cut early so you don't miss out." },
-  { label: "Miss you", subject: "It's been a minute", text: `Hey {first}, it's been a minute! Ready for a fresh cut? Book here: ${siteUrl}/book` },
+  { label: "Miss you", subject: "It's been a minute", text: `Hey {first}, it's been a couple weeks! Ready for a fresh cut? Book here: ${siteUrl}/book` },
 ];
 
 export function Announce() {

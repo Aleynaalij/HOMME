@@ -1,7 +1,7 @@
 -- Waitlist, rebooking reminders and review requests (all toggleable in the dashboard).
 
 alter table public.settings
-  add column rebook_reminder_days int not null default 28 check (rebook_reminder_days between 0 and 120),
+  add column rebook_reminder_days int not null default 14 check (rebook_reminder_days between 0 and 120),
   add column review_requests boolean not null default true,
   add column waitlist_enabled boolean not null default true;
 
