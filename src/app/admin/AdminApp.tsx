@@ -18,6 +18,7 @@ import { Marketing } from "./tabs/Marketing";
 import { Gallery } from "./tabs/Gallery";
 import { BookForClient } from "./tabs/BookForClient";
 import { Waitlist } from "./tabs/Waitlist";
+import { ShareLinks } from "./tabs/ShareLinks";
 import { prettyPhone, smsLink } from "@/lib/contacts";
 
 type Tab = "appointments" | "clients" | "announce" | "marketing" | "gallery" | "services" | "hours" | "live" | "reviews";
@@ -253,6 +254,7 @@ function Appointments() {
 
   return (
     <div>
+      <ShareLinks />
       <Insights />
       {view === "upcoming" && rows && (
         <div className="mb-6 grid grid-cols-3 gap-3">
